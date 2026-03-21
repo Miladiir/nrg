@@ -253,7 +253,11 @@ async fn main() {
     let app = Router::new()
         .merge(swagger)
         .nest("/api", api_routes)
-        .nest_service("/_src", ServeDir::new("."))
+        // Serve workspace source so Firefox's wasm DWARF debugger can fetch
+        // .rs files. Cargo embeds paths relative to the workspace root (e.g.
+        // "crates/id-core/src/lib.rs"); the wasm is at /pkg/*.wasm, so
+        // Firefox resolves those to /pkg/crates/...
+        .nest_service("/pkg/crates", ServeDir::new("crates"))
         .nest_service("/", ServeDir::new("frontend"))
         .layer(CorsLayer::permissive());
 

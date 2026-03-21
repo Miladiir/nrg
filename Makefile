@@ -28,7 +28,6 @@ WASM_TARGET := wasm32-unknown-unknown
 WASM_RAW    := target/$(WASM_TARGET)/debug/id_core.wasm
 
 wasm:
-	RUSTFLAGS="--remap-path-prefix=$(shell pwd)/=/_src/" \
 	cargo build -p id-core --target $(WASM_TARGET)
 	wasm-bindgen $(WASM_RAW) \
 	    --out-dir $(WASM_OUT) \
