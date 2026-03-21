@@ -22,6 +22,9 @@ fn main() {
             "--out-dir", "../../frontend/pkg",
             wasm_profile,
         ])
+        // Give wasm-pack's inner cargo its own target dir so it doesn't
+        // fight with the outer cargo over the build lock.
+        .env("CARGO_TARGET_DIR", workspace.join("target/wasm"))
         .current_dir(&workspace)
         .status()
         .expect("wasm-pack not found — run: cargo install wasm-pack");
