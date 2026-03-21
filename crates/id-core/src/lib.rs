@@ -126,30 +126,43 @@ pub fn generate_malo() -> String {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MeLo-ID  (Messlokations-ID)
+// MeLo-ID  (Messlokations-ID / Zählpunktbezeichnung)
 // ─────────────────────────────────────────────────────────────────────────────
-// Format: 33 characters = "DE" + 31 digits. No checksum.
+// Format: 33 characters, no separators
+//   Segment 1 – Country code (ISO 3166): 2 chars, e.g. "DE"
+//   Segment 2 – Network operator:        6 digits
+//   Segment 3 – Postal code:             5 digits
+//   Segment 4 – Meter point number:     20 uppercase alphanumeric (A–Z, 0–9)
+//
+// Example: DE00056266802AO6G56M11SN51G21M24S
 
 pub fn validate_melo(id: &str) -> Result<(), String> {
     if id.len() != 33 {
         return Err(format!("MeLo-ID must be 33 characters, got {}", id.len()));
     }
     if !id.starts_with("DE") {
-        return Err("MeLo-ID must start with 'DE'".to_string());
+        return Err("MeLo-ID country code must be 'DE'".to_string());
     }
-    if !id[2..].chars().all(|c| c.is_ascii_digit()) {
-        return Err("MeLo-ID must have 31 digits after 'DE'".to_string());
+    let network_op = &id[2..8];
+    let postal = &id[8..13];
+    let meter = &id[13..33];
+    if !network_op.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Network operator segment (positions 3–8) must be 6 digits".to_string());
+    }
+    if !postal.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Postal code segment (positions 9–13) must be 5 digits".to_string());
+    }
+    if !meter.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
+        return Err("Meter point segment (positions 14–33) must be 20 uppercase alphanumeric characters".to_string());
     }
     Ok(())
 }
 
 pub fn generate_melo() -> String {
-    let mut id = String::with_capacity(33);
-    id.push_str("DE");
-    for _ in 0..31 {
-        id.push(char::from_digit(random_digit() as u32, 10).unwrap());
-    }
-    id
+    let network_op: String = (0..6).map(|_| char::from_digit(random_digit() as u32, 10).unwrap()).collect();
+    let postal: String = (0..5).map(|_| char::from_digit(random_digit() as u32, 10).unwrap()).collect();
+    let meter: String = (0..20).map(|_| random_alphanum_upper()).collect();
+    format!("DE{}{}{}", network_op, postal, meter)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -325,8 +338,15 @@ mod tests {
 
     #[test]
     fn melo_validate_valid() {
-        assert!(validate_melo("DE12345678901234567890123456789012").is_err()); // 34 chars
-        assert!(validate_melo("DE1234567890123456789012345678901").is_ok());   // 33 chars
+        // Correct DE format: 2 + 6 + 5 + 20 = 33 chars
+        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24S").is_ok());
+        // Wrong length
+        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24").is_err()); // 32 chars
+        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24SS").is_err()); // 34 chars
+        // Wrong country code
+        assert!(validate_melo("GB00056266802AO6G56M11SN51G21M24S").is_err());
+        // Lowercase in meter segment
+        assert!(validate_melo("DE00056266802ao6g56m11sn51g21m24s").is_err());
     }
 
     #[test]
