@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
-COPY crates/id-core crates/id-core/
+COPY crates/ crates/
 
 RUN wasm-pack build crates/id-core --target web --out-dir /build/frontend/pkg --release
 
