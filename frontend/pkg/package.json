@@ -1,0 +1,15 @@
+{
+  "name": "id-core",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "id_core_bg.wasm",
+    "id_core.js",
+    "id_core.d.ts"
+  ],
+  "main": "id_core.js",
+  "types": "id_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
