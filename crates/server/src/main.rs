@@ -1,6 +1,5 @@
 use axum::{
     extract::Json,
-    http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Router,
@@ -51,8 +50,14 @@ struct ValidateMaloResponse {
 
 #[derive(Serialize, ToSchema)]
 struct GenerateMeloResponse {
-    /// Generated MeLo-ID (33 characters: DE + 31 digits)
+    /// Generated MeLo-ID (33 characters: DE + 6-digit network operator + 5-digit postal code + 20-char alphanumeric meter point)
     id: String,
+}
+
+#[derive(Serialize, ToSchema)]
+struct ErrorResponse {
+    /// HTTP error description
+    error: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -110,7 +115,8 @@ async fn handle_malo_generate() -> impl IntoResponse {
     path = "/api/malo/validate",
     request_body = ValidateRequest,
     responses(
-        (status = 200, description = "Validation result", body = ValidateMaloResponse)
+        (status = 200, description = "Validation result (check `valid` field for outcome)", body = ValidateMaloResponse),
+        (status = 422, description = "Unprocessable Entity — malformed JSON or missing `id` field", body = ErrorResponse),
     ),
     tag = "MaLo-ID"
 )]
@@ -150,7 +156,8 @@ async fn handle_melo_generate() -> impl IntoResponse {
     path = "/api/melo/validate",
     request_body = ValidateRequest,
     responses(
-        (status = 200, description = "Validation result", body = ValidateMeloResponse)
+        (status = 200, description = "Validation result (check `valid` field for outcome)", body = ValidateMeloResponse),
+        (status = 422, description = "Unprocessable Entity — malformed JSON or missing `id` field", body = ErrorResponse),
     ),
     tag = "MeLo-ID"
 )]
@@ -182,7 +189,8 @@ async fn handle_nelo_generate() -> impl IntoResponse {
     path = "/api/nelo/validate",
     request_body = ValidateRequest,
     responses(
-        (status = 200, description = "Validation result", body = ValidateNeloResponse)
+        (status = 200, description = "Validation result (check `valid` field for outcome)", body = ValidateNeloResponse),
+        (status = 422, description = "Unprocessable Entity — malformed JSON or missing `id` field", body = ErrorResponse),
     ),
     tag = "NeLo-ID"
 )]
@@ -215,6 +223,7 @@ async fn handle_nelo_validate(Json(req): Json<ValidateRequest>) -> impl IntoResp
         ValidateMeloResponse,
         GenerateNeloResponse,
         ValidateNeloResponse,
+        ErrorResponse,
     )),
     info(
         title = "NRG ID Generator API",
@@ -255,11 +264,3 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Handler error helper (for 400 responses)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[allow(dead_code)]
-fn bad_request(msg: &str) -> (StatusCode, String) {
-    (StatusCode::BAD_REQUEST, msg.to_string())
-}
