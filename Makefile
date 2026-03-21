@@ -16,11 +16,24 @@ run: wasm
 build-release: wasm-release
 	cargo build --release
 
-# ── wasm-pack ─────────────────────────────────────────────────────────────────
+# ── wasm ──────────────────────────────────────────────────────────────────────
+#
+# Dev: call cargo + wasm-bindgen directly so we can pass --keep-debug.
+#   wasm-pack strips DWARF sections via wasm-bindgen (no way to opt out),
+#   which prevents Firefox from showing Rust source in the debugger.
+#
+# Release: wasm-pack is fine; we don't need debug info there.
+
+WASM_TARGET := wasm32-unknown-unknown
+WASM_RAW    := target/$(WASM_TARGET)/debug/id_core.wasm
 
 wasm:
 	RUSTFLAGS="--remap-path-prefix=$(shell pwd)/=/_src/" \
-	wasm-pack build $(ID_CORE) --target web --out-dir ../../$(WASM_OUT) --dev
+	cargo build -p id-core --target $(WASM_TARGET)
+	wasm-bindgen $(WASM_RAW) \
+	    --out-dir $(WASM_OUT) \
+	    --target web \
+	    --keep-debug
 
 wasm-release:
 	wasm-pack build $(ID_CORE) --target web --out-dir ../../$(WASM_OUT) --release
