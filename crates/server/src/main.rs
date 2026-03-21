@@ -253,6 +253,7 @@ async fn main() {
     let app = Router::new()
         .merge(swagger)
         .nest("/api", api_routes)
+        .nest_service("/_src", ServeDir::new("."))
         .nest_service("/", ServeDir::new("frontend"))
         .layer(CorsLayer::permissive());
 

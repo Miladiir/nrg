@@ -19,6 +19,7 @@ build-release: wasm-release
 # ── wasm-pack ─────────────────────────────────────────────────────────────────
 
 wasm:
+	RUSTFLAGS="--remap-path-prefix=$(shell pwd)/=/_src/" \
 	wasm-pack build $(ID_CORE) --target web --out-dir ../../$(WASM_OUT) --dev
 
 wasm-release:
