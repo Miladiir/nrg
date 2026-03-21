@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/id-core", "crates/server"]
+resolver = "2"
+
+# Full DWARF debug info in the .wasm binary so Firefox can show Rust source
+# in the debugger. wasm-pack --dev skips wasm-opt, so these sections survive.
+[profile.dev]
+opt-level = 0
+debug = 2
