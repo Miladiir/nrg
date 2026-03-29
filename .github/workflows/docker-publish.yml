@@ -58,7 +58,9 @@ jobs:
       # Generates a signed SLSA provenance attestation and attaches it to
       # the image in the registry. Ties the image digest to this exact
       # repo, commit, and workflow run — verifiable by anyone.
+      # Only runs on public repositories (required by GitHub's attestation API).
       - name: Attest build provenance
+        if: github.event.repository.visibility == 'public'
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}
