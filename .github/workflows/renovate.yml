@@ -1,0 +1,56 @@
+name: Renovate Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry run mode (no PRs created)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      logLevel:
+        description: 'Log level for Renovate'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - 'debug'
+          - 'info'
+          - 'warn'
+          - 'error'
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: "renovate"
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: Renovate Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      statuses: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@83ec54fee49ab67d9cd201084c1ff325b4b462e4 # v46.1.10
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          configurationFile: .github/renovate.json
+        env:
+          LOG_LEVEL: ${{ github.event.inputs.logLevel || 'info' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          GITHUB_COM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RENOVATE_DRY_RUN: ${{ github.event.inputs.dryRun || 'false' }}

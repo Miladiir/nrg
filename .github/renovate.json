@@ -1,0 +1,41 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "customManagers:githubActionsVersions"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Match version fields in GitHub Actions workflows with renovate comments",
+      "managerFilePatterns": [
+        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-zA-Z0-9-._]+?)\\s+depName=(?<depName>[^\\s]+?)\\r?\\n\\s*version:\\s*['\"]?(?<currentValue>[^'\"\\s]+)['\"]?"
+      ]
+    }
+  ],
+  "timezone": "Europe/Berlin",
+  "minimumReleaseAge": "7 days",
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security"
+    ]
+  },
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore(deps):",
+  "rebaseWhen": "conflicted",
+  "enabledManagers": [
+    "cargo",
+    "dockerfile",
+    "github-actions"
+  ]
+}
