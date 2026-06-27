@@ -253,7 +253,7 @@ async fn main() {
     let app = Router::new()
         .merge(swagger)
         .nest("/api", api_routes)
-        .nest_service("/", ServeDir::new("frontend"))
+        .fallback_service(ServeDir::new("frontend"))
         .layer(CorsLayer::permissive());
 
     let addr = "0.0.0.0:8080";
