@@ -10,21 +10,21 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn random_digit() -> u8 {
-    use rand::Rng;
-    rand::thread_rng().gen_range(0..10)
+    use rand::RngExt;
+    rand::rng().random_range(0..10)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn random_nonzero_digit() -> u8 {
-    use rand::Rng;
-    rand::thread_rng().gen_range(1..10)
+    use rand::RngExt;
+    rand::rng().random_range(1..10)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn random_alphanum_upper() -> char {
-    use rand::Rng;
+    use rand::RngExt;
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let idx = rand::thread_rng().gen_range(0..CHARS.len());
+    let idx = rand::rng().random_range(0..CHARS.len());
     CHARS[idx] as char
 }
 
