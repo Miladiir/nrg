@@ -32,6 +32,9 @@
   ],
   "semanticCommits": "enabled",
   "commitMessagePrefix": "chore(deps):",
+  "automerge": true,
+  "platformAutomerge": true,
+  "automergeType": "pr",
   "rebaseWhen": "conflicted",
   "enabledManagers": [
     "cargo",
