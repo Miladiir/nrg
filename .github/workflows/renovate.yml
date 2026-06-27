@@ -35,11 +35,6 @@ jobs:
   renovate:
     name: Renovate Dependencies
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      statuses: read
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,10 +42,10 @@ jobs:
       - name: Self-hosted Renovate
         uses: renovatebot/github-action@83ec54fee49ab67d9cd201084c1ff325b4b462e4 # v46.1.10
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RENOVATE_TOKEN }}
           configurationFile: .github/renovate.json
         env:
           LOG_LEVEL: ${{ github.event.inputs.logLevel || 'info' }}
           RENOVATE_REPOSITORIES: ${{ github.repository }}
-          GITHUB_COM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_COM_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           RENOVATE_DRY_RUN: ${{ github.event.inputs.dryRun || 'false' }}
