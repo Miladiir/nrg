@@ -35,15 +35,6 @@
   "automerge": true,
   "platformAutomerge": true,
   "automergeType": "pr",
-  "packageRules": [
-    {
-      "description": "Pin utoipa to 4.x (requires axum 0.7 compat)",
-      "matchManagers": ["cargo"],
-      "matchPackageNames": ["utoipa", "utoipa-swagger-ui"],
-      "matchUpdateTypes": ["major"],
-      "enabled": false
-    }
-  ],
   "rebaseWhen": "conflicted",
   "enabledManagers": [
     "cargo",
