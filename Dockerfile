@@ -1,5 +1,5 @@
 # Stage 1: Build WebAssembly (id-core -> frontend/pkg)
-FROM rust:slim@sha256:6abf73f05806f36362d0ff2722f2250c6153398831edd0455e0e0baa1f78ecc7 AS wasm-builder
+FROM rust:slim@sha256:3b2879047d42784ca9403ad20c51ed3df361a50f1df96f5777d39b4e33aa65cd AS wasm-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -14,7 +14,7 @@ RUN wasm-pack build crates/id-core --target web --out-dir /build/frontend/pkg --
 
 
 # Stage 2: Build server binary
-FROM rust:slim@sha256:6abf73f05806f36362d0ff2722f2250c6153398831edd0455e0e0baa1f78ecc7 AS server-builder
+FROM rust:slim@sha256:3b2879047d42784ca9403ad20c51ed3df361a50f1df96f5777d39b4e33aa65cd AS server-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
