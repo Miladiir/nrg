@@ -1,0 +1,24 @@
+[package]
+name = "nrg-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["json"] }
+futures-util = "0.3"
+id-core = { path = "../id-core", features = ["api-schema"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower-http = { version = "0.7", features = ["cors"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["AbortSignal"] }
+worker = { version = "0.8.5", default-features = false }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+tower = { version = "0.5", features = ["util"] }

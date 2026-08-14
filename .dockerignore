@@ -1,4 +1,12 @@
 target/
 frontend/pkg/
+crates/cloudflare-worker/build/
+**/node_modules/
+**/.wrangler/
+**/.env
+**/.env.*
+**/.dev.vars
+**/.dev.vars.*
+.DS_Store
 .git/
 .gitignore

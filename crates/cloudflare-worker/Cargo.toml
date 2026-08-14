@@ -1,0 +1,15 @@
+[package]
+name = "cloudflare-worker"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+axum = { version = "0.8", default-features = false }
+nrg-api = { path = "../nrg-api" }
+tower-service = "0.3.3"
+worker = { version = "0.8.5", features = ["http", "axum"] }
+worker-macros = { version = "0.8.5", features = ["http"] }

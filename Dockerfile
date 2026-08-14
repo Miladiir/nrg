@@ -4,13 +4,14 @@ FROM rust:slim@sha256:6abf73f05806f36362d0ff2722f2250c6153398831edd0455e0e0baa1f
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    && cargo install --locked wasm-pack@0.15.0
 
 WORKDIR /build
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY crates/ crates/
+COPY data/ data/
 
-RUN wasm-pack build crates/id-core --target web --out-dir /build/frontend/pkg --release
+RUN wasm-pack build --target web --out-dir /build/frontend/pkg --release crates/id-core --features browser-wasm
 
 
 # Stage 2: Build server binary
@@ -23,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY crates/ crates/
+COPY data/ data/
 
 RUN cargo build --release --bin server
 
@@ -36,9 +38,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY --from=server-builder /build/target/release/server ./server
-COPY --from=wasm-builder   /build/frontend/pkg           ./frontend/pkg
-COPY frontend/index.html                                  ./frontend/
+# Copy all checked-in static assets first. `frontend/pkg` is excluded from the
+# build context and then supplied by the reproducible WASM builder stage.
+COPY --chown=65534:65534 frontend/ ./frontend/
+COPY --from=server-builder --chown=65534:65534 /build/target/release/server ./server
+COPY --from=wasm-builder --chown=65534:65534 /build/frontend/pkg ./frontend/pkg
+
+RUN test -x ./server \
+    && test -f ./frontend/index.html \
+    && test -f ./frontend/app.css \
+    && test -f ./frontend/app.js \
+    && test -f ./frontend/swagger-ui/index.html \
+    && test -f ./frontend/swagger-ui/app.js \
+    && test -f ./frontend/pkg/id_core.js \
+    && test -f ./frontend/pkg/id_core_bg.wasm
 
 EXPOSE 8080
+USER 65534:65534
 CMD ["./server"]

@@ -10,7 +10,59 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Validate Nix flake
+        run: nix flake check --all-systems --no-build
+
+      - name: Install JavaScript dependencies
+        run: nix develop -c pnpm install --frozen-lockfile
+
+      - name: Check embedded reference data
+        run: nix develop -c cargo xtask check-reference-data
+
+      - name: Run native semantic tests
+        run: nix develop -c cargo test --workspace --exclude cloudflare-worker
+
+      - name: Check Rust formatting
+        run: nix develop -c cargo fmt --all -- --check
+
+      - name: Check fuzz-target formatting
+        run: nix develop -c cargo fmt --manifest-path fuzz/Cargo.toml -- --check
+
+      - name: Lint native Rust targets
+        run: nix develop -c cargo clippy --workspace --exclude cloudflare-worker --all-targets -- -D warnings
+
+      - name: Compile validator fuzz target
+        run: nix develop -c cargo check --manifest-path fuzz/Cargo.toml --bin validators --locked
+
+      - name: Build native Rust targets
+        run: nix develop -c cargo build --workspace --exclude cloudflare-worker
+
+      - name: Build browser WebAssembly
+        run: nix develop -c make wasm-release
+
+      - name: Check Cloudflare Worker WebAssembly
+        run: nix develop -c cargo check -p cloudflare-worker --target wasm32-unknown-unknown
+
+      - name: Build Cloudflare Worker WebAssembly
+        run: nix develop -c make worker
+
+      - name: Validate Wrangler deployment bundle
+        run: nix develop -c pnpm exec wrangler deploy --dry-run
+
   build-and-push:
+    needs: quality-gate
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -1,0 +1,25 @@
+[package]
+name = "id-core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+id-core = { path = "../crates/id-core" }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "validators"
+path = "fuzz_targets/validators.rs"
+test = false
+doc = false
+bench = false
+
+# Keep this harness outside the application's root workspace. cargo-fuzz
+# expects to own its build profiles and target directory independently.
+[workspace]
+members = ["."]
+resolver = "2"
