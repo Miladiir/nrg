@@ -1,2 +1,12 @@
 /target/
 /frontend/pkg/
+/crates/cloudflare-worker/build/
+**/node_modules/
+**/.wrangler/
+**/.env
+**/.env.*
+!**/.env.example
+**/.dev.vars
+**/.dev.vars.*
+!**/.dev.vars.example
+.DS_Store

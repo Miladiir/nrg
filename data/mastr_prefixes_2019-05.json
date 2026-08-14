@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "name": "mastr_prefixes",
+  "authority": "Bundesnetzagentur",
+  "version": "2019-05",
+  "published": "2019-05",
+  "checked_at": "2026-08-14",
+  "source_url": "https://www.marktstammdatenregister.de/MaStRHilfe/files/regHilfen/MaStR-Nummernkonzept.pdf",
+  "source_sha256": "e2154964b260c5d53274c065ae873114eb048d421bbba65a702f0ffbc56ba01c",
+  "contains_allocations": false,
+  "identifier_structure": {
+    "prefix_length": 3,
+    "version_digit": 9,
+    "random_digit_count": 10,
+    "checksum_scheme": "ean_mod10",
+    "role_suffix_length": 2,
+    "allocation_model": "central"
+  },
+  "prefixes": [
+    {
+      "code": "ABR",
+      "label_de": "Anlagenbetreiber",
+      "sector": "cross_sector",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "BVI",
+      "label_de": "Behörde, Verband oder Institution",
+      "sector": "cross_sector",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "BE",
+        "EI",
+        "EV"
+      ]
+    },
+    {
+      "code": "EEG",
+      "label_de": "EEG-Anlage",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GAN",
+      "label_de": "Gas-Netzanschlusspunkt",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GEE",
+      "label_de": "Gaserzeugungseinheit",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GEL",
+      "label_de": "Technische Gaserzeugungslokation",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GEM",
+      "label_de": "Akteur im Gasmarkt",
+      "sector": "gas",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "BV",
+        "MB",
+        "TK"
+      ]
+    },
+    {
+      "code": "GME",
+      "label_de": "Migrierte Gaseinheit",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "legacy_migrated_unit",
+      "role_suffixes": []
+    },
+    {
+      "code": "GNB",
+      "label_de": "Gasnetzbetreiber",
+      "sector": "gas",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "AN",
+        "FN",
+        "MB",
+        "MV"
+      ]
+    },
+    {
+      "code": "GNE",
+      "label_de": "Gasnetz",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GSE",
+      "label_de": "Gasspeicher",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GVE",
+      "label_de": "Gasverbrauchseinheit",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "GVL",
+      "label_de": "Technische Gasverbrauchslokation",
+      "sector": "gas",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "KWK",
+      "label_de": "KWK-Anlage",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "OMP",
+      "label_de": "Organisierter Marktplatz",
+      "sector": "cross_sector",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "BO",
+        "GK",
+        "GS",
+        "OP",
+        "SK"
+      ]
+    },
+    {
+      "code": "SAN",
+      "label_de": "Strom-Netzanschlusspunkt",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SEE",
+      "label_de": "Stromerzeugungseinheit",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SEL",
+      "label_de": "Technische Stromerzeugungslokation",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SEM",
+      "label_de": "Akteur im Strommarkt",
+      "sector": "electricity",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "BV",
+        "LT",
+        "MB"
+      ]
+    },
+    {
+      "code": "SGE",
+      "label_de": "Genehmigung Strom",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SME",
+      "label_de": "Migrierte Stromeinheit",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "legacy_migrated_unit",
+      "role_suffixes": []
+    },
+    {
+      "code": "SNB",
+      "label_de": "Stromnetzbetreiber",
+      "sector": "electricity",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "AN",
+        "BK",
+        "BV",
+        "MB",
+        "UN"
+      ]
+    },
+    {
+      "code": "SNE",
+      "label_de": "Stromnetz",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SOM",
+      "label_de": "Sonstiger Marktakteur",
+      "sector": "cross_sector",
+      "object_group": "market_participant",
+      "lifecycle": "current",
+      "role_suffixes": [
+        "DL",
+        "SR"
+      ]
+    },
+    {
+      "code": "SSE",
+      "label_de": "Stromspeicher",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SVE",
+      "label_de": "Stromverbrauchseinheit",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    },
+    {
+      "code": "SVL",
+      "label_de": "Technische Stromverbrauchslokation",
+      "sector": "electricity",
+      "object_group": "unit_grouping_or_approval",
+      "lifecycle": "current",
+      "role_suffixes": []
+    }
+  ],
+  "role_suffixes": [
+    {
+      "code": "AN",
+      "label_de": "Anschlussnetzbetreiber"
+    },
+    {
+      "code": "BE",
+      "label_de": "Behörde"
+    },
+    {
+      "code": "BK",
+      "label_de": "Bilanzkoordinator"
+    },
+    {
+      "code": "BO",
+      "label_de": "Börse"
+    },
+    {
+      "code": "BV",
+      "label_de": "Bilanzkreisverantwortlicher"
+    },
+    {
+      "code": "DL",
+      "label_de": "Dienstleister"
+    },
+    {
+      "code": "EI",
+      "label_de": "Energiewirtschaftliche Institution"
+    },
+    {
+      "code": "EV",
+      "label_de": "Energiewirtschaftlicher Verband"
+    },
+    {
+      "code": "FN",
+      "label_de": "Fernleitungsnetzbetreiber"
+    },
+    {
+      "code": "GK",
+      "label_de": "Buchungsplattform für Gaskapazitäten"
+    },
+    {
+      "code": "GS",
+      "label_de": "Buchungsplattform für Gasspeicher"
+    },
+    {
+      "code": "LT",
+      "label_de": "Lieferant, Direktvermarkter oder Großhändler"
+    },
+    {
+      "code": "MB",
+      "label_de": "Messstellenbetreiber"
+    },
+    {
+      "code": "MV",
+      "label_de": "Marktgebietsverantwortlicher"
+    },
+    {
+      "code": "OP",
+      "label_de": "OTC-Plattform"
+    },
+    {
+      "code": "SK",
+      "label_de": "Buchungsplattform für grenzüberschreitende Kapazitäten"
+    },
+    {
+      "code": "SR",
+      "label_de": "Sonstige Marktrolle"
+    },
+    {
+      "code": "TK",
+      "label_de": "Transportkunde"
+    },
+    {
+      "code": "UN",
+      "label_de": "Übertragungsnetzbetreiber"
+    }
+  ]
+}

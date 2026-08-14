@@ -1,0 +1,22 @@
+{
+  "name": "nrg",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "build": "make cloudflare",
+    "build:browser": "make wasm-release",
+    "build:worker": "make worker",
+    "check:worker": "cargo check -p cloudflare-worker --target wasm32-unknown-unknown",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
+    "test": "cargo test --workspace --exclude cloudflare-worker"
+  },
+  "devDependencies": {
+    "wrangler": "4.123.0"
+  }
+}

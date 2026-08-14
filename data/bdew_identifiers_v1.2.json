@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "name": "bdew_identifiers",
+  "authority": "BDEW Bundesverband der Energie- und Wasserwirtschaft e. V.",
+  "version": "1.2",
+  "published": "2025-02-07",
+  "checked_at": "2026-08-14",
+  "source_url": "https://www.bdew.de/media/documents/AWH_Identifikatoren-in-der-Marktkommunikation_Version.1.2.pdf",
+  "source_sha256": "8864853a19008c82267827436d5393b42dea7e3a44b3c7e4cdeecc8f92379820",
+  "contains_allocations": false,
+  "rules": [
+    {
+      "kind": "cluster_resource",
+      "label_de": "Cluster-Ressourcen-ID",
+      "prefix": "A",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "6.6",
+        "6.7",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "control_group",
+      "label_de": "Steuergruppen-ID",
+      "prefix": "B",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "6.6",
+        "6.7",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "controllable_resource",
+      "label_de": "Steuerbare-Ressourcen-ID",
+      "prefix": "C",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "6.6",
+        "6.7",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "market_partner_bdew",
+      "label_de": "BDEW-Marktpartner-ID",
+      "prefix": "99",
+      "total_length": 13,
+      "body_character_set": "numeric",
+      "checksum_scheme": "bdew_lok_waggon",
+      "checksum_position": 13,
+      "allocation_mode": {
+        "position": 3,
+        "minimum_digit": 0,
+        "maximum_digit": 8
+      },
+      "source_sections": [
+        "2.2",
+        "2.3",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "market_partner_dvgw",
+      "label_de": "DVGW-Marktpartner-ID",
+      "prefix": "98",
+      "total_length": 13,
+      "body_character_set": "numeric",
+      "checksum_scheme": "bdew_lok_waggon",
+      "checksum_position": 13,
+      "allocation_mode": {
+        "position": 3,
+        "minimum_digit": 0,
+        "maximum_digit": 9
+      },
+      "source_sections": [
+        "2.2",
+        "2.3",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "network_area",
+      "label_de": "Netzbereichs-ID",
+      "prefix": "F",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "5.2",
+        "5.3",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "package",
+      "label_de": "Paket-ID",
+      "prefix": "P9",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "7.2",
+        "7.3",
+        "8.1",
+        "8.2"
+      ]
+    },
+    {
+      "kind": "technical_resource",
+      "label_de": "Technische-Ressourcen-ID",
+      "prefix": "D",
+      "total_length": 11,
+      "body_character_set": "uppercase_alphanumeric",
+      "checksum_scheme": "bdew_ascii",
+      "checksum_position": 11,
+      "allocation_mode": null,
+      "source_sections": [
+        "6.6",
+        "6.7",
+        "8.1",
+        "8.2"
+      ]
+    }
+  ]
+}

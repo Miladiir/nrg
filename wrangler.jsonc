@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nrg",
+  "main": "./crates/cloudflare-worker/build/index.js",
+  "compatibility_date": "2026-08-14",
+  "workers_dev": false,
+  "preview_urls": false,
+  "build": {
+    "command": "make cloudflare",
+    "watch_dir": [
+      "./Cargo.toml",
+      "./Cargo.lock",
+      "./Makefile",
+      "./rust-toolchain.toml",
+      "./crates/cloudflare-worker/Cargo.toml",
+      "./crates/cloudflare-worker/src",
+      "./crates/id-core/Cargo.toml",
+      "./crates/id-core/src",
+      "./data",
+      "./crates/nrg-api/Cargo.toml",
+      "./crates/nrg-api/src"
+    ]
+  },
+  "assets": {
+    "directory": "./frontend",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*", "/api-docs/*"]
+  },
+  "routes": [
+    {
+      "pattern": "nrg.miladiir.de",
+      "custom_domain": true
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "LEI_LOOKUP_RATE_LIMITER",
+      "namespace_id": "271828",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

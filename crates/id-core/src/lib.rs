@@ -1,53 +1,36 @@
 //! Core ID generation and validation logic for German energy market identifiers.
 //! This crate compiles to both native Rust (for the backend) and WebAssembly (for the frontend).
 
-#[cfg(target_arch = "wasm32")]
+mod fixture;
+
+pub mod catalog;
+pub mod checksum;
+pub mod identifiers;
+pub mod reference_data;
+
+pub use fixture::GENERATOR_VERSION;
+
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 use wasm_bindgen::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Random number generation (platform-specific)
+// Random number generation
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[cfg(not(target_arch = "wasm32"))]
 fn random_digit() -> u8 {
     use rand::RngExt;
     rand::rng().random_range(0..10)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn random_nonzero_digit() -> u8 {
     use rand::RngExt;
     rand::rng().random_range(1..10)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn random_alphanum_upper() -> char {
     use rand::RngExt;
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let idx = rand::rng().random_range(0..CHARS.len());
-    CHARS[idx] as char
-}
-
-#[cfg(target_arch = "wasm32")]
-fn js_random_u32() -> u32 {
-    use js_sys::Math;
-    (Math::random() * (u32::MAX as f64)) as u32
-}
-
-#[cfg(target_arch = "wasm32")]
-fn random_digit() -> u8 {
-    (js_random_u32() % 10) as u8
-}
-
-#[cfg(target_arch = "wasm32")]
-fn random_nonzero_digit() -> u8 {
-    (js_random_u32() % 9 + 1) as u8
-}
-
-#[cfg(target_arch = "wasm32")]
-fn random_alphanum_upper() -> char {
-    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let idx = (js_random_u32() as usize) % CHARS.len();
     CHARS[idx] as char
 }
 
@@ -66,13 +49,19 @@ fn random_alphanum_upper() -> char {
 //   check    = (10 - (total % 10)) % 10
 
 pub fn calculate_malo_checksum(base10: &str) -> Result<u8, String> {
+    if !base10.is_ascii() {
+        return Err("MaLo-ID must contain only ASCII digits".to_string());
+    }
     if base10.len() != 10 {
         return Err(format!("Expected 10 digits, got {}", base10.len()));
     }
     let mut odd_sum: i32 = 0;
     let mut even_sum: i32 = 0;
     for (i, c) in base10.chars().enumerate() {
-        let d = c.to_digit(10).ok_or_else(|| format!("Non-digit char '{}' at position {}", c, i + 1))? as i32;
+        let d = c
+            .to_digit(10)
+            .ok_or_else(|| format!("Non-digit char '{}' at position {}", c, i + 1))?
+            as i32;
         if (i + 1) % 2 == 1 {
             odd_sum += d;
         } else {
@@ -90,10 +79,17 @@ pub struct MaloInfo {
 }
 
 pub fn validate_malo(id: &str) -> Result<MaloInfo, String> {
+    if !id.is_ascii() {
+        return Err("MaLo-ID must contain only ASCII digits".to_string());
+    }
     if id.len() != 11 {
         return Err(format!("MaLo-ID must be 11 digits, got {}", id.len()));
     }
-    let first = id.chars().next().unwrap().to_digit(10)
+    let first = id
+        .chars()
+        .next()
+        .unwrap()
+        .to_digit(10)
         .ok_or("First character must be a digit")?;
     if first < 1 {
         return Err("First digit must be 1–9".to_string());
@@ -105,10 +101,17 @@ pub fn validate_malo(id: &str) -> Result<MaloInfo, String> {
     let expected = calculate_malo_checksum(base)?;
     let actual = id.chars().last().unwrap().to_digit(10).unwrap() as u8;
     if actual != expected {
-        return Err(format!("Invalid checksum: expected {}, got {}", expected, actual));
+        return Err(format!(
+            "Invalid checksum: expected {}, got {}",
+            expected, actual
+        ));
     }
     let issuer = if first <= 3 { "DVGW" } else { "BDEW" };
-    Ok(MaloInfo { id: id.to_string(), checksum: actual, issuer })
+    Ok(MaloInfo {
+        id: id.to_string(),
+        checksum: actual,
+        issuer,
+    })
 }
 
 pub fn generate_malo() -> String {
@@ -125,6 +128,21 @@ pub fn generate_malo() -> String {
     }
 }
 
+/// Generate a reproducible, formally valid MaLo-ID test value.
+///
+/// The value is not checked against either allocation authority and must not be
+/// represented as an assigned MaLo-ID.
+pub fn generate_malo_seeded(seed: &str, index: u32) -> String {
+    let mut rng = fixture::DeterministicRng::new(seed, "malo", index);
+    let mut base = String::with_capacity(10);
+    base.push(char::from_digit(u32::from(rng.nonzero_digit()), 10).unwrap());
+    for _ in 0..9 {
+        base.push(char::from_digit(u32::from(rng.digit()), 10).unwrap());
+    }
+    let check = calculate_malo_checksum(&base).expect("generator builds a valid MaLo base");
+    format!("{base}{check}")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MeLo-ID  (Messlokations-ID / Zählpunktbezeichnung)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +155,9 @@ pub fn generate_malo() -> String {
 // Example: DE00056266802AO6G56M11SN51G21M24S
 
 pub fn validate_melo(id: &str) -> Result<(), String> {
+    if !id.is_ascii() {
+        return Err("MeLo-ID must contain only ASCII characters".to_string());
+    }
     if id.len() != 33 {
         return Err(format!("MeLo-ID must be 33 characters, got {}", id.len()));
     }
@@ -152,17 +173,40 @@ pub fn validate_melo(id: &str) -> Result<(), String> {
     if !postal.chars().all(|c| c.is_ascii_digit()) {
         return Err("Postal code segment (positions 9–13) must be 5 digits".to_string());
     }
-    if !meter.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
-        return Err("Meter point segment (positions 14–33) must be 20 uppercase alphanumeric characters".to_string());
+    if !meter
+        .chars()
+        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+    {
+        return Err(
+            "Meter point segment (positions 14–33) must be 20 uppercase alphanumeric characters"
+                .to_string(),
+        );
     }
     Ok(())
 }
 
 pub fn generate_melo() -> String {
-    let network_op: String = (0..6).map(|_| char::from_digit(random_digit() as u32, 10).unwrap()).collect();
-    let postal: String = (0..5).map(|_| char::from_digit(random_digit() as u32, 10).unwrap()).collect();
+    let network_op: String = (0..6)
+        .map(|_| char::from_digit(random_digit() as u32, 10).unwrap())
+        .collect();
+    let postal: String = (0..5)
+        .map(|_| char::from_digit(random_digit() as u32, 10).unwrap())
+        .collect();
     let meter: String = (0..20).map(|_| random_alphanum_upper()).collect();
     format!("DE{}{}{}", network_op, postal, meter)
+}
+
+/// Generate a reproducible, formally valid MeLo-ID test value.
+pub fn generate_melo_seeded(seed: &str, index: u32) -> String {
+    let mut rng = fixture::DeterministicRng::new(seed, "melo", index);
+    let network_operator: String = (0..6)
+        .map(|_| char::from_digit(u32::from(rng.digit()), 10).unwrap())
+        .collect();
+    let postal_code: String = (0..5)
+        .map(|_| char::from_digit(u32::from(rng.digit()), 10).unwrap())
+        .collect();
+    let meter_point: String = (0..20).map(|_| rng.uppercase_alphanumeric()).collect();
+    format!("DE{network_operator}{postal_code}{meter_point}")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,6 +233,9 @@ fn char_value(c: char) -> i32 {
 }
 
 pub fn calculate_nelo_checksum(base10: &str) -> Result<u8, String> {
+    if !base10.is_ascii() {
+        return Err("NeLo-ID must contain only ASCII characters".to_string());
+    }
     if base10.len() != 10 {
         return Err(format!("Expected 10 characters, got {}", base10.len()));
     }
@@ -196,7 +243,10 @@ pub fn calculate_nelo_checksum(base10: &str) -> Result<u8, String> {
     if first != 'E' {
         return Err("NeLo-ID must start with 'E'".to_string());
     }
-    let valid_chars: bool = base10.chars().skip(1).all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
+    let valid_chars: bool = base10
+        .chars()
+        .skip(1)
+        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
     if !valid_chars {
         return Err("NeLo-ID positions 2–10 must be uppercase letters or digits".to_string());
     }
@@ -215,6 +265,9 @@ pub fn calculate_nelo_checksum(base10: &str) -> Result<u8, String> {
 }
 
 pub fn validate_nelo(id: &str) -> Result<(), String> {
+    if !id.is_ascii() {
+        return Err("NeLo-ID must contain only ASCII characters".to_string());
+    }
     if id.len() != 11 {
         return Err(format!("NeLo-ID must be 11 characters, got {}", id.len()));
     }
@@ -229,7 +282,10 @@ pub fn validate_nelo(id: &str) -> Result<(), String> {
     let expected = calculate_nelo_checksum(base)?;
     let actual = last.to_digit(10).unwrap() as u8;
     if actual != expected {
-        return Err(format!("Invalid checksum: expected {}, got {}", expected, actual));
+        return Err(format!(
+            "Invalid checksum: expected {}, got {}",
+            expected, actual
+        ));
     }
     Ok(())
 }
@@ -247,17 +303,31 @@ pub fn generate_nelo() -> String {
     }
 }
 
+/// Generate a reproducible, formally valid NeLo-ID test value.
+///
+/// NeLo-IDs are centrally issued. This function makes no allocation claim.
+pub fn generate_nelo_seeded(seed: &str, index: u32) -> String {
+    let mut rng = fixture::DeterministicRng::new(seed, "nelo", index);
+    let mut base = String::with_capacity(10);
+    base.push('E');
+    for _ in 0..9 {
+        base.push(rng.uppercase_alphanumeric());
+    }
+    let check = calculate_nelo_checksum(&base).expect("generator builds a valid NeLo base");
+    format!("{base}{check}")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // WebAssembly exports
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_generate_malo() -> String {
     generate_malo()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_validate_malo(id: &str) -> String {
     match validate_malo(id) {
@@ -269,13 +339,13 @@ pub fn wasm_validate_malo(id: &str) -> String {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_generate_melo() -> String {
     generate_melo()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_validate_melo(id: &str) -> String {
     match validate_melo(id) {
@@ -284,13 +354,13 @@ pub fn wasm_validate_melo(id: &str) -> String {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_generate_nelo() -> String {
     generate_nelo()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 #[wasm_bindgen]
 pub fn wasm_validate_nelo(id: &str) -> String {
     match validate_nelo(id) {
@@ -299,7 +369,7 @@ pub fn wasm_validate_nelo(id: &str) -> String {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
 fn json_string(s: &str) -> String {
     let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
     format!("\"{}\"", escaped)
@@ -329,10 +399,20 @@ mod tests {
     }
 
     #[test]
+    fn malo_rejects_non_ascii_without_panicking() {
+        assert!(calculate_malo_checksum("41373559é").is_err());
+        assert!(validate_malo("4é13735592").is_err());
+    }
+
+    #[test]
     fn malo_generate_is_valid() {
         for _ in 0..20 {
             let id = generate_malo();
-            assert!(validate_malo(&id).is_ok(), "Generated MaLo-ID {} is invalid", id);
+            assert!(
+                validate_malo(&id).is_ok(),
+                "Generated MaLo-ID {} is invalid",
+                id
+            );
         }
     }
 
@@ -340,20 +420,26 @@ mod tests {
     fn melo_validate_valid() {
         // Correct DE format: 2 + 6 + 5 + 20 = 33 chars
         assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24S").is_ok());
-        // Wrong length
-        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24").is_err()); // 32 chars
-        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24SS").is_err()); // 34 chars
+        // Wrong lengths: 32 and 34 chars
+        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24").is_err());
+        assert!(validate_melo("DE00056266802AO6G56M11SN51G21M24SS").is_err());
         // Wrong country code
         assert!(validate_melo("GB00056266802AO6G56M11SN51G21M24S").is_err());
         // Lowercase in meter segment
         assert!(validate_melo("DE00056266802ao6g56m11sn51g21m24s").is_err());
+        // Non-ASCII input must be rejected without slicing through UTF-8.
+        assert!(validate_melo("DE00056é66802AO6G56M11SN51G21M2").is_err());
     }
 
     #[test]
     fn melo_generate_is_valid() {
         for _ in 0..20 {
             let id = generate_melo();
-            assert!(validate_melo(&id).is_ok(), "Generated MeLo-ID {} is invalid", id);
+            assert!(
+                validate_melo(&id).is_ok(),
+                "Generated MeLo-ID {} is invalid",
+                id
+            );
         }
     }
 
@@ -379,13 +465,37 @@ mod tests {
     fn nelo_validate_alpha() {
         assert!(validate_nelo("EABC123DEF8").is_ok());
         assert!(validate_nelo("EABC123DEF0").is_err());
+        assert!(validate_nelo("EABC12éDEF8").is_err());
     }
 
     #[test]
     fn nelo_generate_is_valid() {
         for _ in 0..20 {
             let id = generate_nelo();
-            assert!(validate_nelo(&id).is_ok(), "Generated NeLo-ID {} is invalid", id);
+            assert!(
+                validate_nelo(&id).is_ok(),
+                "Generated NeLo-ID {} is invalid",
+                id
+            );
         }
+    }
+
+    #[test]
+    fn seeded_legacy_generators_are_reproducible_and_valid() {
+        let seed = "integration-test-4711";
+
+        let malo = generate_malo_seeded(seed, 0);
+        let melo = generate_melo_seeded(seed, 0);
+        let nelo = generate_nelo_seeded(seed, 0);
+
+        assert_eq!(malo, generate_malo_seeded(seed, 0));
+        assert_eq!(melo, generate_melo_seeded(seed, 0));
+        assert_eq!(nelo, generate_nelo_seeded(seed, 0));
+        assert_ne!(malo, generate_malo_seeded(seed, 1));
+        assert_ne!(melo, generate_melo_seeded(seed, 1));
+        assert_ne!(nelo, generate_nelo_seeded(seed, 1));
+        assert!(validate_malo(&malo).is_ok());
+        assert!(validate_melo(&melo).is_ok());
+        assert!(validate_nelo(&nelo).is_ok());
     }
 }

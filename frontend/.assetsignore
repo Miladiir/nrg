@@ -1,0 +1,4 @@
+.assetsignore
+pkg/.gitignore
+pkg/*.d.ts
+pkg/package.json
