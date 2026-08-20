@@ -13,7 +13,7 @@ tower-http = { version = "0.7", features = ["cors"] }
 utoipa = { version = "5", features = ["axum_extras"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-tls", "stream"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = ["AbortSignal"] }
