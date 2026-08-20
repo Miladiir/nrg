@@ -6,19 +6,19 @@
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#b42318">
     <title>NRG Testdaten</title>
-    <link rel="stylesheet" href="./app.css?v=2">
-    <script type="module" src="./app.js?v=2"></script>
+    <link rel="stylesheet" href="./app.css?v=4">
+    <script type="module" src="./app.js?v=4"></script>
   </head>
   <body>
     <a class="skip-link" href="#workspace">Zum Inhalt springen</a>
 
     <header class="site-header">
       <div class="site-header__inner">
-        <a class="brand" href="#overview" aria-label="NRG Testdaten – Übersicht">
+        <a class="brand" href="#" aria-label="NRG Testdaten – Übersicht">
           <span class="brand__mark" aria-hidden="true">NRG</span>
           <span>
             <strong>NRG Testdaten</strong>
-            <small>Kennungen sicher erzeugen und prüfen</small>
+            <small>Kennungen erzeugen und prüfen</small>
           </span>
         </a>
         <a class="header-link" href="/swagger-ui/" target="_blank" rel="noopener">
@@ -28,101 +28,18 @@
       </div>
     </header>
 
-    <div id="appStatus" class="app-status" role="status" aria-live="polite">
-      <span class="spinner" aria-hidden="true"></span>
-      Katalog wird geladen …
-    </div>
-
-    <div id="app" class="app-shell" hidden>
-      <aside class="sidebar" aria-label="Werkzeuge und Filter">
-        <section class="filter-panel" aria-labelledby="filterHeading">
-          <div class="section-heading">
-            <h2 id="filterHeading">Perspektive</h2>
-            <button id="resetFilters" class="text-button" type="button">Zurücksetzen</button>
-          </div>
-
-          <label class="field">
-            <span>Rolle</span>
-            <select id="roleFilter">
-              <option value="">Alle</option>
-              <option value="supplier">Lieferant</option>
-              <option value="grid_operator">Netzbetreiber</option>
-              <option value="metering_point_operator">MSB</option>
-              <option value="balancing_responsible_party">BKV</option>
-              <option value="asset_operator">Anlagenbetreiber</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Sparte</span>
-            <select id="sectorFilter">
-              <option value="">Alle</option>
-              <option value="electricity">Strom</option>
-              <option value="gas">Gas</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Suche</span>
-            <input id="searchFilter" type="search" placeholder="z. B. IBAN oder Lokation" autocomplete="off">
-          </label>
-        </section>
-
-        <nav class="catalog-nav" aria-label="Fachliche Navigation">
-          <button class="nav-overview is-current" type="button" data-view="overview">
-            <span>Übersicht</span>
-            <span id="catalogCount" class="count-badge"></span>
-          </button>
-          <button class="nav-overview" type="button" data-view="scenarios">
-            <span>Testdatensätze</span>
-            <span class="nav-hint">Szenarien</span>
-          </button>
-          <div id="catalogNavigation"></div>
-        </nav>
+    <div id="app" class="app-shell">
+      <aside class="sidebar" aria-label="Kennungen">
+        <nav id="navigation" class="catalog-nav" aria-label="Kennungen"></nav>
       </aside>
 
       <main id="workspace" class="workspace" tabindex="-1">
-        <section id="overviewView" aria-labelledby="overviewHeading">
-          <div class="page-heading">
-            <div>
-              <p class="eyebrow">Katalog</p>
-              <h1 id="overviewHeading">Verfügbare Kennungen</h1>
-              <p id="overviewLead">Die Auswahl stammt direkt aus dem NRG-Katalog.</p>
-            </div>
-            <div id="catalogVersion" class="version-badge"></div>
-          </div>
-          <div id="emptyCatalog" class="empty-state" hidden>
-            <h2>Keine Treffer</h2>
-            <p>Passe Rolle, Sparte oder Suchbegriff an.</p>
-          </div>
-          <div id="catalogGrid" class="catalog-grid"></div>
-        </section>
-
-        <section id="detailView" hidden aria-labelledby="detailTitle">
-          <button id="backToOverview" class="back-button" type="button">← Zur Übersicht</button>
-          <div id="detailHeader"></div>
-          <div id="detailTabs" class="action-tabs" role="tablist" aria-label="Kennungsaktionen"></div>
-          <div id="detailPanel"></div>
-        </section>
-
-        <section id="scenarioView" hidden aria-labelledby="scenarioHeading">
-          <div class="page-heading">
-            <div>
-              <p class="eyebrow">Testdatensätze</p>
-              <h1 id="scenarioHeading">Komplette Szenarien</h1>
-              <p>Zusammengehörige Kennungen aus einem gemeinsamen Fixture-Seed.</p>
-            </div>
-          </div>
-          <div id="scenarioStatus" class="inline-notice" role="status" aria-live="polite">
-            Szenariokatalog wird geladen …
-          </div>
-          <div id="scenarioContent" hidden></div>
-        </section>
+        <div id="detail"></div>
       </main>
     </div>
 
     <footer class="site-footer">
-      <p>Synthetische Werte sind Testdaten und werden nicht als produktiv nutzbar ausgewiesen.</p>
+      <p>Erzeugte Werte sind synthetische Testdaten, keine realen Konten oder Registrierungen.</p>
       <a href="/api-docs/openapi.json" target="_blank" rel="noopener">OpenAPI-Dokument</a>
     </footer>
 

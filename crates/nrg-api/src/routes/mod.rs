@@ -1,12 +1,6 @@
 use axum::{extract::rejection::JsonRejection, Json};
-use id_core::{
-    catalog::{
-        descriptor, CollisionGuarantee, GenerateRequest, GeneratedIdentifier, GenerationProfile,
-        IdentifierFormat, IdentifierKind, Sector, ValidationReport,
-    },
-    generate_melo, GENERATOR_VERSION,
-};
-use serde::Serialize;
+use id_core::ops::{self, GenerateOptions, OpsError};
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{ApiError, ErrorResponse};
@@ -14,27 +8,86 @@ use crate::{ApiError, ErrorResponse};
 pub(crate) mod business;
 pub(crate) mod energy;
 pub(crate) mod metering;
-pub(crate) mod negative;
 pub(crate) mod payments;
 pub(crate) mod registers;
-pub(crate) mod scenarios;
+
+/// Options accepted by every generator endpoint.
+#[derive(Debug, Clone, Default, Deserialize, ToSchema)]
+#[serde(default)]
+pub(crate) struct GenerateRequest {
+    /// Number of values to generate (default 1).
+    #[schema(minimum = 1, maximum = 100)]
+    pub count: Option<u32>,
+    /// Reproducible seed: the same seed reproduces the same values. Omitted
+    /// means a random seed.
+    pub seed: Option<String>,
+}
+
+impl GenerateRequest {
+    pub(crate) fn into_options(self) -> GenerateOptions {
+        GenerateOptions {
+            count: self.count,
+            seed: self.seed,
+            ..GenerateOptions::default()
+        }
+    }
+}
 
 pub(crate) type GeneratePayload = Result<Json<GenerateRequest>, JsonRejection>;
 
+/// One batch of generated test values.
 #[derive(Debug, Serialize, ToSchema)]
 pub(crate) struct GenerateResponse {
-    /// Version of the deterministic algorithms used for this batch.
-    pub generator_version: String,
-    /// Effective seed. Persist it together with the generator version and, for
-    /// directory-backed profiles, the returned reference-data version/hash.
-    pub fixture_seed: String,
-    pub items: Vec<GeneratedIdentifier>,
+    pub values: Vec<String>,
 }
 
+/// Result of validating one identifier value.
+#[derive(Debug, Serialize, ToSchema)]
+pub(crate) struct ValidateResponse {
+    pub valid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Market sector selecting sector-specific formation rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Sector {
+    Electricity,
+    Gas,
+}
+
+impl Sector {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Electricity => "electricity",
+            Self::Gas => "gas",
+        }
+    }
+}
+
+/// Output representation for identifiers with a formatted form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Format {
+    Electronic,
+    Formatted,
+}
+
+impl Format {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Electronic => "electronic",
+            Self::Formatted => "formatted",
+        }
+    }
+}
+
+// Documentation-only enums; they are never instantiated at runtime.
 #[allow(dead_code)]
 #[derive(utoipa::IntoResponses)]
 pub(crate) enum GenerateApiResponses {
-    /// Generated identifier batch.
+    /// Generated value batch.
     #[response(status = 200)]
     Success(GenerateResponse),
     /// Malformed JSON request body.
@@ -46,21 +99,20 @@ pub(crate) enum GenerateApiResponses {
     /// Content-Type is not application/json.
     #[response(status = 415)]
     UnsupportedMediaType(ErrorResponse),
-    /// JSON schema or generation options are invalid.
+    /// The request schema or generation options are invalid.
     #[response(status = 422)]
     InvalidOptions(ErrorResponse),
-    /// A generated value failed an internal invariant.
+    /// Generation failed an internal invariant.
     #[response(status = 500)]
-    InternalInvariant(ErrorResponse),
+    GenerationFailed(ErrorResponse),
 }
 
-// Documentation-only enum; it is never instantiated at runtime.
-#[allow(dead_code, clippy::large_enum_variant)]
+#[allow(dead_code)]
 #[derive(utoipa::IntoResponses)]
-pub(crate) enum ValidationApiResponses {
-    /// Detailed validation report.
+pub(crate) enum ValidateApiResponses {
+    /// Validation result.
     #[response(status = 200)]
-    Success(ValidationReport),
+    Success(ValidateResponse),
     /// Malformed JSON request body.
     #[response(status = 400)]
     MalformedJson(ErrorResponse),
@@ -70,188 +122,42 @@ pub(crate) enum ValidationApiResponses {
     /// Content-Type is not application/json.
     #[response(status = 415)]
     UnsupportedMediaType(ErrorResponse),
-    /// JSON request body does not match the validation schema.
+    /// The request does not match the schema.
     #[response(status = 422)]
     InvalidRequest(ErrorResponse),
 }
 
-pub(crate) struct PreparedGeneration {
-    pub kind: IdentifierKind,
-    pub profile: GenerationProfile,
-    pub count: u8,
-    pub fixture_seed: String,
-    pub format: IdentifierFormat,
-    pub sector: Option<Sector>,
-    pub country: Option<String>,
-}
-
-pub(crate) fn parse_generate_payload(
-    payload: GeneratePayload,
-) -> Result<GenerateRequest, ApiError> {
-    payload
-        .map(|Json(request)| request)
-        .map_err(ApiError::invalid_generate_json)
-}
-
-pub(crate) fn prepare_generation(
-    kind: IdentifierKind,
-    mut request: GenerateRequest,
-) -> Result<PreparedGeneration, ApiError> {
-    let descriptor = descriptor(kind)
-        .ok_or_else(|| ApiError::invalid_request("Unknown identifier kind".to_string()))?;
-    let count = request
-        .validated_count()
-        .map_err(|error| ApiError::invalid_request(error.to_string()))?;
-    if kind == IdentifierKind::Iban {
-        let country = request
-            .country
-            .as_deref()
-            .unwrap_or("DE")
-            .trim()
-            .to_ascii_uppercase();
-        id_core::identifiers::payments::international_iban::iban_country_spec(&country)
-            .map_err(|error| ApiError::invalid_request(error.to_string()))?;
-        request.country = Some(country);
-    }
-    let international_iban_default = (kind == IdentifierKind::Iban
-        && request
-            .country
-            .as_deref()
-            .is_some_and(|country| !country.eq_ignore_ascii_case("DE")))
-    .then_some(GenerationProfile::ChecksumOnly);
-    let profile = request
-        .profile
-        .or(international_iban_default)
-        .or(descriptor.default_profile)
-        .ok_or_else(|| {
-            ApiError::invalid_request(format!(
-                "{} has no default generation profile",
-                descriptor.slug
-            ))
-        })?;
-    if !descriptor.supports_profile(profile) {
-        return Err(ApiError::invalid_request(format!(
-            "Profile '{}' is not supported for {}",
-            profile.as_str(),
-            descriptor.slug
-        )));
-    }
-    if kind == IdentifierKind::Iban
-        && request.country.as_deref() != Some("DE")
-        && !matches!(
-            profile,
-            GenerationProfile::ChecksumOnly | GenerationProfile::OfficialExample
-        )
-    {
-        return Err(ApiError::invalid_request(format!(
-            "Profile '{}' is available only for German IBANs; international generation supports 'checksum_only' and 'official_example'",
-            profile.as_str()
-        )));
-    }
-    if kind == IdentifierKind::MarketPartnerId && request.sector == Some(Sector::CrossSector) {
-        return Err(ApiError::invalid_request(
-            "MP-ID generation requires sector 'electricity' or 'gas'".to_string(),
-        ));
-    }
-
-    let fixture_seed = request.fixture_seed.unwrap_or_else(generate_melo);
-    Ok(PreparedGeneration {
-        kind,
-        profile,
-        count,
-        fixture_seed,
-        format: request.format,
-        sector: request.sector,
-        country: request.country,
-    })
-}
-
-pub(crate) fn generate_batch<F>(
-    kind: IdentifierKind,
-    payload: GeneratePayload,
-    generator: F,
-) -> Result<Json<GenerateResponse>, ApiError>
-where
-    F: FnMut(&PreparedGeneration, u32) -> Result<GeneratedIdentifier, String>,
-{
-    let request = parse_generate_payload(payload)?;
-    let prepared = prepare_generation(kind, request)?;
-    generate_prepared_batch(prepared, generator)
-}
-
-pub(crate) fn generate_prepared_batch<F>(
-    prepared: PreparedGeneration,
-    mut generator: F,
-) -> Result<Json<GenerateResponse>, ApiError>
-where
-    F: FnMut(&PreparedGeneration, u32) -> Result<GeneratedIdentifier, String>,
-{
-    let mut items = Vec::with_capacity(usize::from(prepared.count));
-    for index in 0..u32::from(prepared.count) {
-        let item = generator(&prepared, index).map_err(|message| {
-            ApiError::generation_failed_with_message(prepared.kind.as_str(), message)
-        })?;
-        if item.collision_guarantee == CollisionGuarantee::WithinBatch
-            && items
-                .iter()
-                .any(|existing: &GeneratedIdentifier| existing.value == item.value)
-        {
-            return Err(ApiError::generation_failed_with_message(
-                prepared.kind.as_str(),
-                "generator violated its within-batch uniqueness guarantee".to_string(),
-            ));
+/// Runs the shared `id_core::ops` generator dispatch for one endpoint.
+pub(crate) fn run_generate(
+    slug: &str,
+    options: GenerateOptions,
+) -> Result<Json<GenerateResponse>, ApiError> {
+    match ops::generate(slug, &options) {
+        Ok(values) => Ok(Json(GenerateResponse { values })),
+        Err(OpsError::InvalidOptions(message)) => Err(ApiError::invalid_request(message)),
+        Err(OpsError::Failed(message)) => {
+            Err(ApiError::generation_failed_with_message(slug, message))
         }
-        items.push(item);
-    }
-
-    Ok(Json(GenerateResponse {
-        generator_version: GENERATOR_VERSION.to_string(),
-        fixture_seed: prepared.fixture_seed,
-        items,
-    }))
-}
-
-pub(crate) fn rendered_value(
-    electronic: &str,
-    formatted: Option<&str>,
-    format: IdentifierFormat,
-) -> String {
-    match (format, formatted) {
-        (IdentifierFormat::Formatted, Some(formatted)) => formatted.to_string(),
-        _ => electronic.to_string(),
     }
 }
 
-pub(crate) fn generate_identifier_item(
-    prepared: &PreparedGeneration,
-    index: u32,
-) -> Result<GeneratedIdentifier, String> {
-    match prepared.kind {
-        IdentifierKind::Malo
-        | IdentifierKind::Melo
-        | IdentifierKind::Nelo
-        | IdentifierKind::Nebe
-        | IdentifierKind::MarketPartnerId
-        | IdentifierKind::ClusterResourceId
-        | IdentifierKind::SteeringGroupId
-        | IdentifierKind::ControllableResourceId
-        | IdentifierKind::TechnicalResourceId
-        | IdentifierKind::PackageId => energy::generate_item(prepared, index),
-        IdentifierKind::Iban
-        | IdentifierKind::Bic
-        | IdentifierKind::CreditorId
-        | IdentifierKind::MandateReference
-        | IdentifierKind::EndToEndId
-        | IdentifierKind::RfReference
-        | IdentifierKind::Uetr => payments::generate_item(prepared, index),
-        IdentifierKind::Mastr => registers::generate_item(prepared, index),
-        IdentifierKind::VatId
-        | IdentifierKind::Lei
-        | IdentifierKind::Eic
-        | IdentifierKind::Obis
-        | IdentifierKind::Din43849 => Err(format!(
-            "{} does not support generation",
-            prepared.kind.as_str()
-        )),
-    }
+pub(crate) fn generate_batch(
+    slug: &str,
+    payload: GeneratePayload,
+) -> Result<Json<GenerateResponse>, ApiError> {
+    let Json(request) = payload.map_err(ApiError::invalid_generate_json)?;
+    run_generate(slug, request.into_options())
+}
+
+pub(crate) fn validation_response(result: Result<(), String>) -> Json<ValidateResponse> {
+    Json(match result {
+        Ok(()) => ValidateResponse {
+            valid: true,
+            error: None,
+        },
+        Err(error) => ValidateResponse {
+            valid: false,
+            error: Some(error),
+        },
+    })
 }
