@@ -1,6 +1,8 @@
 /target/
 /frontend/pkg/
 /crates/cloudflare-worker/build/
+/.direnv/
+/.envrc.local
 **/node_modules/
 **/.wrangler/
 **/.env
