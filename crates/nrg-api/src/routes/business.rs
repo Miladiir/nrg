@@ -10,24 +10,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::{http::StatusCode, Json};
 use futures_util::TryStreamExt;
-use id_core::{
-    catalog::{
-        AllocationStatus, CheckStatus, Checks, IdentifierKind, IdentifierPart, ReferenceData,
-        ValidationReport,
-    },
-    identifiers::business::{
-        lei::{gleif_record_api_url, validate_lei, LeiError},
-        vat_id::{validate_german_vat_id, VIES_VALIDATION_URL},
-    },
-};
+use id_core::identifiers::business::lei::{gleif_record_api_url, validate_lei};
+use id_core::ops;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use super::ValidationApiResponses;
+use super::{validation_response, ValidateApiResponses, ValidateResponse};
 use crate::{parse_validate_payload, ApiError, ErrorResponse, ValidatePayload, ValidateRequest};
 
-const BUSINESS_VALIDATION_WARNING: &str =
-    "Offline validation does not prove current registry status, assignment, or entity identity.";
 const GLEIF_JSON_API_MEDIA_TYPE: &str = "application/vnd.api+json";
 const GLEIF_LOOKUP_TIMEOUT: Duration = Duration::from_secs(8);
 const MAX_GLEIF_RESPONSE_BYTES: usize = 512 * 1024;
@@ -37,144 +27,32 @@ const LEI_NOT_FOUND_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 const LEI_UPSTREAM_RATE_LIMIT: u32 = 60;
 const LEI_UPSTREAM_RATE_WINDOW: Duration = Duration::from_secs(60);
 
-fn invalid_report(
-    kind: IdentifierKind,
-    input: String,
-    error: String,
-    checksum: CheckStatus,
-) -> ValidationReport {
-    ValidationReport {
-        kind,
-        input,
-        normalized: None,
-        valid: false,
-        checks: Checks {
-            syntax: if checksum == CheckStatus::Invalid {
-                CheckStatus::Valid
-            } else {
-                CheckStatus::Invalid
-            },
-            checksum,
-            directory: CheckStatus::NotChecked,
-            assignment: CheckStatus::Unknown,
-        },
-        allocation_status: AllocationStatus::Unknown,
-        synthetic: None,
-        production_usable: None,
-        parts: Vec::new(),
-        reference_data: None,
-        warnings: Vec::new(),
-        errors: vec![error],
-    }
-}
-
 #[utoipa::path(
     post,
-    path = "/api/v1/business/tax/vat-id/validate",
-    operation_id = "businessVatIdValidate",
+    path = "/api/v1/vat-id/validate",
     request_body = ValidateRequest,
-    responses(ValidationApiResponses),
-    tag = "Unternehmen · Stammdaten & Register"
+    responses(ValidateApiResponses),
+    tag = "Unternehmen"
 )]
 pub(crate) async fn handle_vat_id_validate(
     payload: ValidatePayload,
-) -> Result<Json<ValidationReport>, ApiError> {
+) -> Result<Json<ValidateResponse>, ApiError> {
     let request = parse_validate_payload(payload)?;
-    let input = request.id;
-    let report = match validate_german_vat_id(&input) {
-        Ok(validation) => ValidationReport {
-            kind: IdentifierKind::VatId,
-            input: input.clone(),
-            normalized: Some(validation.parts.electronic),
-            valid: true,
-            checks: Checks {
-                syntax: CheckStatus::Valid,
-                // No public German national checksum algorithm is available.
-                checksum: CheckStatus::NotApplicable,
-                directory: CheckStatus::NotChecked,
-                assignment: CheckStatus::Unknown,
-            },
-            allocation_status: AllocationStatus::Unknown,
-            synthetic: None,
-            production_usable: None,
-            parts: vec![
-                IdentifierPart::new("country", validation.parts.country_code),
-                IdentifierPart::new("national_identifier", validation.parts.national_identifier),
-                IdentifierPart::new("checksum_status", "not_available"),
-                IdentifierPart::new("lookup_status", "not_performed"),
-            ],
-            reference_data: None,
-            warnings: vec![
-                BUSINESS_VALIDATION_WARNING.to_string(),
-                format!("Current validity requires a BZSt/VIES query: {VIES_VALIDATION_URL}"),
-            ],
-            errors: Vec::new(),
-        },
-        Err(error) => invalid_report(
-            IdentifierKind::VatId,
-            input,
-            error.to_string(),
-            CheckStatus::NotApplicable,
-        ),
-    };
-    Ok(Json(report))
+    Ok(validation_response(ops::validate("vat-id", &request.id)))
 }
 
 #[utoipa::path(
     post,
-    path = "/api/v1/business/organizations/lei/validate",
-    operation_id = "businessLeiValidate",
+    path = "/api/v1/lei/validate",
     request_body = ValidateRequest,
-    responses(ValidationApiResponses),
-    tag = "Unternehmen · Stammdaten & Register"
+    responses(ValidateApiResponses),
+    tag = "Unternehmen"
 )]
 pub(crate) async fn handle_lei_validate(
     payload: ValidatePayload,
-) -> Result<Json<ValidationReport>, ApiError> {
+) -> Result<Json<ValidateResponse>, ApiError> {
     let request = parse_validate_payload(payload)?;
-    let input = request.id;
-    let report = match validate_lei(&input) {
-        Ok(validation) => ValidationReport {
-            kind: IdentifierKind::Lei,
-            input: input.clone(),
-            normalized: Some(validation.parts.value),
-            valid: true,
-            checks: Checks {
-                syntax: CheckStatus::Valid,
-                checksum: CheckStatus::Valid,
-                directory: CheckStatus::NotChecked,
-                assignment: CheckStatus::Unknown,
-            },
-            allocation_status: AllocationStatus::Unknown,
-            synthetic: None,
-            production_usable: None,
-            parts: vec![
-                IdentifierPart::new("issuer_prefix", validation.parts.issuer_prefix),
-                IdentifierPart::new("entity_specific", validation.parts.entity_specific),
-                IdentifierPart::new("check_digits", validation.parts.check_digits),
-            ],
-            reference_data: Some(ReferenceData {
-                name: "gleif_global_lei_index".to_string(),
-                version: None,
-                valid_from: None,
-                valid_to: None,
-                sha256: None,
-            }),
-            warnings: vec![BUSINESS_VALIDATION_WARNING.to_string()],
-            errors: Vec::new(),
-        },
-        Err(error) => invalid_report(
-            IdentifierKind::Lei,
-            input,
-            error.to_string(),
-            if matches!(error, LeiError::ChecksumMismatch) {
-                CheckStatus::Invalid
-            } else {
-                CheckStatus::NotChecked
-            },
-        ),
-    };
-    Ok(Json(report))
+    Ok(validation_response(ops::validate("lei", &request.id)))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
@@ -208,19 +86,15 @@ pub(crate) struct LeiRegistryRecord {
     pub last_update_date: Option<String>,
 }
 
+/// Live lookup result from the public GLEIF JSON:API.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
 pub(crate) struct LeiLookupResponse {
-    pub kind: IdentifierKind,
     pub value: String,
-    pub registry: String,
     pub lookup_url: String,
     pub lookup_status: LeiLookupStatus,
     pub upstream_http_status: Option<u16>,
     pub registry_as_of: Option<String>,
     pub record: Option<LeiRegistryRecord>,
-    pub checks: Checks,
-    pub allocation_status: AllocationStatus,
-    pub warnings: Vec<String>,
     pub upstream_error: Option<String>,
     pub cache_status: LeiLookupCacheStatus,
     /// Remaining cache lifetime for a hit, or the configured lifetime for a miss.
@@ -302,9 +176,6 @@ struct LookupOutcome {
     upstream_http_status: Option<u16>,
     registry_as_of: Option<String>,
     record: Option<LeiRegistryRecord>,
-    checks: Checks,
-    allocation_status: AllocationStatus,
-    warnings: Vec<String>,
     upstream_error: Option<String>,
 }
 
@@ -510,28 +381,14 @@ impl LookupTransportError {
     }
 }
 
-fn lookup_checks(directory: CheckStatus, assignment: CheckStatus) -> Checks {
-    Checks {
-        syntax: CheckStatus::Valid,
-        checksum: CheckStatus::Valid,
-        directory,
-        assignment,
-    }
-}
-
 fn lookup_response(value: &str, lookup_url: &str, outcome: LookupOutcome) -> LeiLookupResponse {
     LeiLookupResponse {
-        kind: IdentifierKind::Lei,
         value: value.to_string(),
-        registry: "GLEIF Global LEI Index".to_string(),
         lookup_url: lookup_url.to_string(),
         lookup_status: outcome.lookup_status,
         upstream_http_status: outcome.upstream_http_status,
         registry_as_of: outcome.registry_as_of,
         record: outcome.record,
-        checks: outcome.checks,
-        allocation_status: outcome.allocation_status,
-        warnings: outcome.warnings,
         upstream_error: outcome.upstream_error,
         cache_status: LeiLookupCacheStatus::NotStored,
         cache_ttl_seconds: None,
@@ -556,11 +413,6 @@ fn parse_gleif_response(
                             upstream_http_status: Some(response.status),
                             registry_as_of: None,
                             record: None,
-                            checks: lookup_checks(CheckStatus::Unknown, CheckStatus::Unknown),
-                            allocation_status: AllocationStatus::Unknown,
-                            warnings: vec![
-                                "GLEIF returned an unreadable registry response.".to_string(),
-                            ],
                             upstream_error: Some(format!("Invalid GLEIF JSON: {error}")),
                         },
                     );
@@ -579,12 +431,6 @@ fn parse_gleif_response(
                         upstream_http_status: Some(response.status),
                         registry_as_of,
                         record: None,
-                        checks: lookup_checks(CheckStatus::Unknown, CheckStatus::Unknown),
-                        allocation_status: AllocationStatus::Unknown,
-                        warnings: vec![
-                            "GLEIF returned a successful response without a record; assignment remains unknown."
-                                .to_string(),
-                        ],
                         upstream_error: None,
                     },
                 );
@@ -598,11 +444,6 @@ fn parse_gleif_response(
                         upstream_http_status: Some(response.status),
                         registry_as_of,
                         record: None,
-                        checks: lookup_checks(CheckStatus::Unknown, CheckStatus::Unknown),
-                        allocation_status: AllocationStatus::Unknown,
-                        warnings: vec![
-                            "GLEIF returned a record for a different LEI.".to_string(),
-                        ],
                         upstream_error: Some(
                             "GLEIF response identifier did not match the requested LEI".to_string(),
                         ),
@@ -642,12 +483,6 @@ fn parse_gleif_response(
                     upstream_http_status: Some(response.status),
                     registry_as_of,
                     record: Some(record),
-                    checks: lookup_checks(CheckStatus::Found, CheckStatus::Found),
-                    allocation_status: AllocationStatus::Allocated,
-                    warnings: vec![
-                        "The LEI was found in GLEIF; registry status does not independently verify the entity's identity or suitability for a transaction."
-                            .to_string(),
-                    ],
                     upstream_error: None,
                 },
             )
@@ -660,12 +495,6 @@ fn parse_gleif_response(
                 upstream_http_status: Some(response.status),
                 registry_as_of: None,
                 record: None,
-                checks: lookup_checks(CheckStatus::NotFound, CheckStatus::Unknown),
-                allocation_status: AllocationStatus::Unknown,
-                warnings: vec![
-                    "No GLEIF record was found at lookup time; this is not permanent proof that the identifier was never allocated."
-                        .to_string(),
-                ],
                 upstream_error: None,
             },
         ),
@@ -677,9 +506,6 @@ fn parse_gleif_response(
                 upstream_http_status: Some(status),
                 registry_as_of: None,
                 record: None,
-                checks: lookup_checks(CheckStatus::Unknown, CheckStatus::Unknown),
-                allocation_status: AllocationStatus::Unknown,
-                warnings: vec!["GLEIF could not provide usable registry evidence.".to_string()],
                 upstream_error: Some(format!("GLEIF returned HTTP {status}")),
             },
         ),
@@ -699,9 +525,6 @@ fn transport_error_response(
             upstream_http_status: None,
             registry_as_of: None,
             record: None,
-            checks: lookup_checks(CheckStatus::Unknown, CheckStatus::Unknown),
-            allocation_status: AllocationStatus::Unknown,
-            warnings: vec!["GLEIF could not be reached; assignment remains unknown.".to_string()],
             upstream_error: Some(error.message),
         },
     )
@@ -880,11 +703,10 @@ pub(crate) enum LeiLookupApiResponses {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/business/organizations/lei/lookup",
-    operation_id = "businessLeiLookup",
+    path = "/api/v1/lei/lookup",
     request_body = ValidateRequest,
     responses(LeiLookupApiResponses),
-    tag = "Unternehmen · Stammdaten & Register"
+    tag = "Unternehmen"
 )]
 pub(crate) async fn handle_lei_lookup(
     payload: ValidatePayload,
@@ -929,26 +751,28 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn vat_validation_never_claims_checksum_or_assignment_evidence() {
+    async fn vat_validation_accepts_formatted_input_and_rejects_bad_shapes() {
         let Json(report) = handle_vat_id_validate(payload("de 123 456 789"))
             .await
             .unwrap();
         assert!(report.valid);
-        assert_eq!(report.normalized.as_deref(), Some("DE123456789"));
-        assert_eq!(report.checks.checksum, CheckStatus::NotApplicable);
-        assert_eq!(report.checks.directory, CheckStatus::NotChecked);
-        assert_eq!(report.allocation_status, AllocationStatus::Unknown);
+
+        let Json(invalid) = handle_vat_id_validate(payload("DE12345")).await.unwrap();
+        assert!(!invalid.valid);
+        assert!(invalid.error.is_some());
     }
 
     #[tokio::test]
-    async fn lei_validation_separates_checksum_from_registry_evidence() {
+    async fn lei_validation_detects_checksum_errors() {
         let Json(report) = handle_lei_validate(payload("506700GE1G29325QX363"))
             .await
             .unwrap();
         assert!(report.valid);
-        assert_eq!(report.checks.checksum, CheckStatus::Valid);
-        assert_eq!(report.checks.directory, CheckStatus::NotChecked);
-        assert_eq!(report.checks.assignment, CheckStatus::Unknown);
+
+        let Json(invalid) = handle_lei_validate(payload("506700GE1G29325QX364"))
+            .await
+            .unwrap();
+        assert!(!invalid.valid);
     }
 
     fn lookup_url() -> String {
@@ -988,9 +812,6 @@ mod tests {
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(response.lookup_status, LeiLookupStatus::Found);
-        assert_eq!(response.checks.directory, CheckStatus::Found);
-        assert_eq!(response.checks.assignment, CheckStatus::Found);
-        assert_eq!(response.allocation_status, AllocationStatus::Allocated);
         assert_eq!(
             response.registry_as_of.as_deref(),
             Some("2026-08-14T00:00:00Z")
@@ -1005,7 +826,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn injected_404_is_not_found_but_not_claimed_as_unallocated() {
+    async fn injected_404_is_reported_as_not_found() {
         let (status, response) = perform_lei_lookup(
             "506700GE1G29325QX363".to_string(),
             lookup_url(),
@@ -1020,9 +841,6 @@ mod tests {
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(response.lookup_status, LeiLookupStatus::NotFound);
-        assert_eq!(response.checks.directory, CheckStatus::NotFound);
-        assert_eq!(response.checks.assignment, CheckStatus::Unknown);
-        assert_eq!(response.allocation_status, AllocationStatus::Unknown);
         assert!(response.record.is_none());
     }
 
@@ -1200,8 +1018,6 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert_eq!(response.lookup_status, LeiLookupStatus::UpstreamError);
-        assert_eq!(response.checks.directory, CheckStatus::Unknown);
-        assert_eq!(response.allocation_status, AllocationStatus::Unknown);
 
         let response = parse_gleif_response(
             "506700GE1G29325QX363",

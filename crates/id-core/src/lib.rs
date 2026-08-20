@@ -1,17 +1,18 @@
 //! Core ID generation and validation logic for German energy market identifiers.
-//! This crate compiles to both native Rust (for the backend) and WebAssembly (for the frontend).
+//! This crate compiles to both native Rust (for the backend) and WebAssembly
+//! (for the frontend), so both run the exact same code.
 
 mod fixture;
 
-pub mod catalog;
+#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
+mod browser;
+
 pub mod checksum;
 pub mod identifiers;
+pub mod ops;
 pub mod reference_data;
 
 pub use fixture::GENERATOR_VERSION;
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-use wasm_bindgen::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Random number generation
@@ -315,64 +316,6 @@ pub fn generate_nelo_seeded(seed: &str, index: u32) -> String {
     }
     let check = calculate_nelo_checksum(&base).expect("generator builds a valid NeLo base");
     format!("{base}{check}")
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// WebAssembly exports
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_generate_malo() -> String {
-    generate_malo()
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_validate_malo(id: &str) -> String {
-    match validate_malo(id) {
-        Ok(info) => format!(
-            r#"{{"valid":true,"checksum":{},"issuer":"{}","id":"{}"}}"#,
-            info.checksum, info.issuer, info.id
-        ),
-        Err(e) => format!(r#"{{"valid":false,"error":{}}}"#, json_string(&e)),
-    }
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_generate_melo() -> String {
-    generate_melo()
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_validate_melo(id: &str) -> String {
-    match validate_melo(id) {
-        Ok(()) => format!(r#"{{"valid":true,"id":{}}}"#, json_string(id)),
-        Err(e) => format!(r#"{{"valid":false,"error":{}}}"#, json_string(&e)),
-    }
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_generate_nelo() -> String {
-    generate_nelo()
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-#[wasm_bindgen]
-pub fn wasm_validate_nelo(id: &str) -> String {
-    match validate_nelo(id) {
-        Ok(()) => format!(r#"{{"valid":true,"id":{}}}"#, json_string(id)),
-        Err(e) => format!(r#"{{"valid":false,"error":{}}}"#, json_string(&e)),
-    }
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "browser-wasm"))]
-fn json_string(s: &str) -> String {
-    let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
-    format!("\"{}\"", escaped)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

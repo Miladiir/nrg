@@ -65,7 +65,6 @@ pub enum EicAllocationStatus {
 /// This status is qualified by the snapshot timestamp. It is deliberately not
 /// converted into an unqualified current allocation assertion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "api-schema", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum EicDirectoryStatus {
     Active,
@@ -88,7 +87,6 @@ impl EicDirectoryStatus {
 /// descriptions, dates, contacts, addresses or responsible-party data can be
 /// represented by this type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "api-schema", derive(utoipa::ToSchema))]
 pub struct EicDirectoryRecord {
     pub value: String,
     pub status: EicDirectoryStatus,

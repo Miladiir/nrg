@@ -730,7 +730,6 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "utoipa",
  "wasm-bindgen",
 ]
 

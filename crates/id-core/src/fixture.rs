@@ -2,7 +2,7 @@
 //!
 //! This is deliberately not a cryptographic RNG. Its byte-for-byte behaviour is
 //! part of `GENERATOR_VERSION`; callers that need unpredictable values must omit
-//! `fixture_seed` and let the API create an ephemeral seed first.
+//! the seed and let the API create an ephemeral one first.
 
 /// Version of the deterministic fixture algorithms exposed by the API.
 pub const GENERATOR_VERSION: &str = "1";
